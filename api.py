@@ -65,7 +65,7 @@ def log_to_database_internal(session_id, user_query, ai_response, intermediate_s
         conn.commit()
     return session_id
 
-# --- Các Endpoint API ---
+# Các endpoint chính của API
 
 @app.get("/sessions")
 def get_sessions():
@@ -102,7 +102,7 @@ async def chat_endpoint(req: ChatRequest):
         ai_output = result.get('final_answer', 'Lỗi: Không có phản hồi.')
         llm_analysis = result.get('llm_analysis', [])
         
-        # Ghi log database
+        # Ghi lại lượt chat vào database
         new_sid = log_to_database_internal(
             session_id=req.session_id,
             user_query=req.user_input,

@@ -16,18 +16,14 @@ class MultiRoleAgentGraph:
    
         self.graph = StateGraph(MultiRoleAgentState)
         self.memory = MemorySaver()
-        # ------------------------------------------
-        # Thêm các node
-        # ------------------------------------------
+        # Khai báo các node trên đồ thị xử lý
         self.graph.add_node("user_input", self._wrap_node(user_input))
         self.graph.add_node("role_manager", self._wrap_node(role_manager))
         self.graph.add_node("task_analyzer", self._wrap_node(task_analyzer))
         self.graph.add_node("tool_executor", self._wrap_node(tool_executor))
         self.graph.add_node("llm_response", self._wrap_node(llm_response))
 
-        # ------------------------------------------
-        # Định nghĩa luồng chuyển tiếp
-        # ------------------------------------------
+        # Định nghĩa các cạnh để nối chuỗi node
         self.graph.set_entry_point("user_input")
         self.graph.add_edge("user_input", "role_manager")
         self.graph.add_edge("role_manager", "task_analyzer")
@@ -35,14 +31,10 @@ class MultiRoleAgentGraph:
         self.graph.add_edge("tool_executor", "llm_response")
         self.graph.add_edge("llm_response", END)
 
-        # ------------------------------------------
-        # Biên dịch đồ thị
-        # ------------------------------------------
+        # Biên dịch và lưu checkpoint cho graph
         self.app = self.graph.compile(checkpointer=self.memory)
 
-    # ------------------------------------------
-    # Gói node để LangGraph có thể xử lý được
-    # ------------------------------------------
+    # Các helper để trả về state theo yêu cầu của LangGraph
     def _wrap_node(self, func):
         """
         LangGraph yêu cầu node nhận state và trả về state.
@@ -72,14 +64,12 @@ class MultiRoleAgentGraph:
             "final_answer": None,
         }
 
-    # ------------------------------------------
-    # Chạy đồ thị
-    # ------------------------------------------
+    # Triển khai đồ thị cho mỗi lượt chat
     def run(self, state: MultiRoleAgentState) -> Dict[str, Any]:
         """
         Nhận vào 1 state (dict) và trả ra state cuối cùng sau khi chạy qua graph.
         """
-        # Dùng thread_id ngẫu nhiên để tránh lưu checkpoint cũ
+        # Cấp thread_id mới để không ghi đè checkpoint cũ
         thread_id = str(uuid.uuid4())
 
         final_state = self.app.invoke(

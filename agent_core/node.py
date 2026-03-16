@@ -45,10 +45,11 @@ def _load_tool_for_role() -> List[Dict[str, Any]]:
 
         tools = data.get("tools", [])
         if not isinstance(tools, list):
-            raise ValueError(f"File YAML của role '{tool}' không đúng định dạng (tools phải là list).")
+            raise ValueError("File YAML tool.yaml không đúng định dạng (tools phải là list).")
 
         # Chuẩn hóa thông tin
         normalized_tools = []
+        # Chuẩn hóa mỗi tool để có đủ mô tả và tham số
         for tool in tools:
             normalized_tools.append({
                 "name": tool.get("name"),
@@ -61,7 +62,7 @@ def _load_tool_for_role() -> List[Dict[str, Any]]:
     except FileNotFoundError:
         raise FileNotFoundError(f"Không tìm thấy file YAML cho role")
     except Exception as e:
-        raise RuntimeError(f"ỗi khi load tool cho role ")
+        raise RuntimeError(f"Lỗi khi load tool cho role: {str(e)}")
 
 def _load_memory(session_id: str ) -> list:
     if not session_id:
@@ -86,7 +87,7 @@ def _load_memory(session_id: str ) -> list:
 
         print(rows)
 
-        # Đảo ngược 
+        # Đảo ngược để hiển thị dòng thời gian từ cũ đến mới
         history_records = reversed(rows)
         formatted_history = []
         for user_msg, bot_msg in history_records:
@@ -114,7 +115,7 @@ def role_manager(state: MultiRoleAgentState) -> None:
 
     state["conversation_history"] = summarise_conversation_history  
 
-    # 3. Xây dựng template để chèn memory vào prompt
+    # Dựng template prompt đã tích hợp lịch sử hội thoại
     final_prompt_template = (f"""
         {base_prompt} 
         ---
@@ -123,7 +124,7 @@ def role_manager(state: MultiRoleAgentState) -> None:
         ---
             """)
 
-    # 4. Cập nhật state với prompt cuối cùng đã được bổ sung memory
+    # Gán prompt đã hoàn chỉnh vào state để các node sau dùng
     state["full_prompt"] = final_prompt_template
     print("Đã tải và kết hợp memory vào prompt thành công.")
 
@@ -159,16 +160,16 @@ def _extract_json_from_text(text: str) -> Any:
 
     candidate = obj_match.group(1) if obj_match else (arr_match.group(1) if arr_match else text)
 
-    # try direct json.loads
+    # Thử parse JSON trực tiếp
     try:
         return json.loads(candidate)
     except Exception:
         pass
 
-    # sửa lỗi phổ biến: single quotes -> double quotes
+    # Sửa lỗi phổ biến (nháy đơn -> nháy đôi) trước khi parse lại
     repaired = candidate.replace("'", '"')
 
-    # remove trailing commas before } or ]
+    # Loại bỏ dấu phẩy dư trước } hoặc ]
     repaired = re.sub(r",\s*([}\]])", r"\1", repaired)
 
     try:
@@ -185,7 +186,6 @@ def _validate_and_format_required_tools(parsed_required: Any, normalized_role_to
     if not parsed_required:
         return []
 
-    #print(normalized_role_tools)
     result = []
     available_names = {t["name"] for t in normalized_role_tools}
 
@@ -230,10 +230,10 @@ def task_analyzer(state: MultiRoleAgentState) -> None:
     if not user_question or not base_prompt:
         raise ValueError("task_analyzer: state thiếu user_question hoặc base_prompt")
 
-    # chuẩn hoá role_tools thành list of dicts
+    # Chuẩn hóa danh sách tool để xử lý đồng nhất
     normalized_role_tools = _normalize_role_tools(role_tools_raw)
 
-    # gọi LLM
+    # Gọi Gemini Analyzer để phân tích và chọn tool
     analyzer = GeminiAnalyzerLLM()
     raw_response = analyzer.analyze_task(base_prompt=base_prompt, user_question=user_question, role_tools=normalized_role_tools)
 
@@ -243,12 +243,12 @@ def task_analyzer(state: MultiRoleAgentState) -> None:
     if isinstance(parsed, dict) and "required_tools" in parsed:
         required_raw = parsed["required_tools"]
     elif isinstance(parsed, list):
-        # LLM trả trực tiếp 1 list
+        # Gemini có thể trả trực tiếp một danh sách tool
         required_raw = parsed
     else:
         required_raw = []
 
-    # validate & normalize
+    # Xác thực và chuẩn hóa tool trước khi thực thi
     required_tools_normalized = _validate_and_format_required_tools(required_raw, normalized_role_tools)
 
     state["required_tools"] = required_tools_normalized
@@ -282,14 +282,14 @@ def tool_executor(state: MultiRoleAgentState) -> None:
         except Exception as e:
             result = f"Lỗi khi thực thi {tool_name}: {str(e)}"
 
-        # Lưu lại kết quả vào danh sách tool_results
+        # Lưu lại kết quả mỗi tool để tổng hợp sau
         tool_results.append({
             "tool_name": tool_name,
             "params": params,
             "result": result
         })
 
-    # Cập nhật state
+    # Đẩy kết quả tool vào state để node cuối dùng
     state["tool_results"] = tool_results
 
 def llm_response(state: MultiRoleAgentState) -> None:
@@ -302,17 +302,17 @@ def llm_response(state: MultiRoleAgentState) -> None:
     user_question = state.get("user_input", "")
     tool_results = state.get("tool_results", [])
 
-    # --- Kiểm tra dữ liệu đầu vào ---
+    # Kiểm tra dữ liệu đầu vào
     if not base_prompt or not user_question:
         raise ValueError("llm_response: thiếu base_prompt hoặc user_question trong state.")
 
-    # --- Chuẩn bị nội dung tool_results (dạng dễ đọc cho LLM) ---
+    # Chuẩn bị tool_results thành chuỗi dễ đọc
     if tool_results:
         formatted_tool_results = json.dumps(tool_results, ensure_ascii=False, indent=2)
     else:
         formatted_tool_results = "Không có tool nào được gọi hoặc không có kết quả."
 
-    # --- Xây dựng prompt tổng hợp ---
+    # Xây dựng prompt tổng hợp cho Gemini
     system_prompt = f"""
 Bạn là AI assistant đảm nhận vai trò trả lời câu hỏi người dùng về kiến thúc và tài liệu liên quan đến thủ tục hành chính công.
 Dưới đây là prompt hướng dẫn của vai trò này:
@@ -339,9 +339,9 @@ Nhiệm vụ của bạn:
 - Nếu không có dữ liệu hoặc dữ liệu mâu thuẫn, hãy trả lời một cách trung lập.
 """
 
-    # --- Gọi LLM tổng hợp ---
+    # Gọi Gemini Synthesizer để tạo câu trả lời cuối
     synthesizer = GeminiSynthesizerLLM()
     final_answer = synthesizer.run(system_prompt)
 
-    # --- Cập nhật vào state ---
+    # Gán câu trả lời vào state
     state["final_answer"] = final_answer.strip()

@@ -1,6 +1,6 @@
 services:
   backend-api:
-    #image: txhungg/langgraph-chatbot
+    # Có thể thay bằng image đã build sẵn nếu không muốn build tại chỗ
     build: .
     container_name: langgraph-api
     command: uvicorn api:app --host 0.0.0.0 --port 8000
@@ -13,7 +13,7 @@ services:
     restart: always
 
   frontend-ui:
-    #image: txhungg/langgraph-frontend
+    # Tương tự với frontend: dùng image sẵn có nếu cần
     build: .
     container_name: streamlit-ui
     command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0

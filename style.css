@@ -1,9 +1,9 @@
-/* 1. Xóa khoảng trắng trên cùng của Sidebar */
+/* 1. Giảm khoảng trắng phía trên sidebar */
 [data-testid="stSidebar"] .block-container {
     padding-top: -1rem !important; /* Mặc định là khoảng 5-6rem, chỉnh về 1rem hoặc 0rem */
 }
 
-/* 2. (Tùy chọn) Xóa khoảng trắng trên cùng của Main Content (phần chat bên phải) */
+/* 2. Với phần chat chính, giữ khoảng cách vừa phải để tránh mất chiều cao */
 [data-testid="stAppViewContainer"] .block-container {
     padding-top: 4rem !important;
 }
@@ -24,4 +24,3 @@
         color: #ffffff;
         box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
-

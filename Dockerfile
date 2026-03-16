@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Cài Driver SQL Server bản mới (không dùng apt-key)
+# Cài driver ODBC chính thức của SQL Server
 RUN apt-get update && apt-get install -y curl gnupg2 unixodbc-dev \
     && curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
     && echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \

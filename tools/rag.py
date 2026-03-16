@@ -5,7 +5,7 @@ from sentence_transformers import SentenceTransformer
 from functools import lru_cache
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-# Load mo hinh embedding
+# Tải mô hình embedding từ thư mục địa phương
 @lru_cache(maxsize=1)
 def load_model():
     local_model_path = os.path.join("models", "Vietnamese_Embedding")
@@ -14,10 +14,10 @@ def load_model():
 
 @lru_cache(maxsize=1)
 def connect_chroma_db():
-    #Đường dẫn tới thư mục chứa chroma.sqlite3
+    # Đường dẫn tới thư mục chứa file ChromaDB
     persist_dir = os.path.join("chroma_db", "chroma_db_faqs")  
 
-    #Kết nối ChromaDB
+    # Kết nối tới ChromaDB và lấy collection
     client = chromadb.PersistentClient(path=persist_dir)
     collection = client.get_collection("faqs_collection")
     return collection
@@ -38,13 +38,12 @@ def search_project_documents(query: str):
     answer = []
     collection = connect_chroma_db()
     results = collection.query(
-        query_embeddings=[query_embed],  # danh sách các vector query
-        n_results=5  # số kết quả muốn lấy
+        query_embeddings=[query_embed],  # danh sách vector truy vấn
+        n_results=5  # số kết quả tối đa trả về
     )
     for doc in results["metadatas"][0]:
         answer.append(doc.get("answer_text"))
     return answer
-
 
 
 

@@ -8,17 +8,17 @@ class MultiRoleAgentState(TypedDict):
     session_id: str
     conversation_history: str
 
-    # Dùng để lưu prompt gốc 
+    # Prompt gốc của vai trò
     base_prompt: str   
     tools: Optional[List[str]] 
     full_prompt: str
 
-    # Phân tích của LLM
+    # Phân tích từ Gemini Analyzer
     llm_analysis: Optional[str]      
     required_tools: Optional[List[Dict[str, Any]]] 
     
-    # Kết quả tool
+    # Kết quả thực thi tool
     tool_results: Annotated[List[Dict[str, Any]], add]  
 
-    # Câu trả lời cuối cùng
+    # Câu trả lời tổng hợp
     final_answer: Optional[str]  

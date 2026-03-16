@@ -1,5 +1,5 @@
 # --- BẢO MẬT ---
-.env
+.venv/
 config.json
 
 # --- FILE RÁC HỆ THỐNG ---
@@ -8,6 +8,6 @@ __pycache__/
 *.spec
 .DS_Store
 
-# --- ẨN MODEL NẶNG (Theo yêu cầu) ---
+# --- ẨN MODEL NẶNG
 models/Vietnamese_Embedding/
 

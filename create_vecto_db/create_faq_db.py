@@ -9,7 +9,7 @@ import chromadb
 import unicodedata
 import time
 
-# Sửa lại đường dẫn mặc định cho logger để phù hợp với cấu trúc thư mục của bạn
+# Định vị thư mục log phù hợp với cấu trúc hiện tại
 def setup_logger(log_dir: str = r"D:/Chatbot_Data4Life/v1/create_vecto_db/logs/logs"):
     """Khởi tạo logger để ghi lại quá trình xử lý."""
     os.makedirs(log_dir, exist_ok=True)
@@ -30,7 +30,7 @@ def setup_logger(log_dir: str = r"D:/Chatbot_Data4Life/v1/create_vecto_db/logs/l
     logging.info("=== Logger initialized ===")
     return logging
 
-# Sửa lại đường dẫn mặc định cho mô hình embedding để phù hợp với cấu trúc thư mục của bạn
+# Liên kết tới mô hình embedding đã lưu trên máy
 def load_embedding_model(model_path: str) -> SentenceTransformer:
     """Tải mô hình embedding từ một đường dẫn local."""
     try:
@@ -63,22 +63,22 @@ def load_and_prepare_faq_data(csv_path: str) -> pd.DataFrame:
         logging.info(f"Đang đọc dữ liệu từ: {csv_path}")
         df = pd.read_csv(csv_path)
 
-        # 1. Kiểm tra sự tồn tại của các cột bắt buộc
+        # Đảm bảo CSV có đủ các cột bắt buộc
         required_columns = ['id', 'title', 'answer_text']
         if not all(col in df.columns for col in required_columns):
             logging.error(f"File CSV thiếu các cột bắt buộc: {required_columns}")
             return pd.DataFrame() 
 
-        # 2. Loại bỏ các dòng có giá trị null ở các cột quan trọng
+        # Loại bỏ dòng thiếu dữ liệu ở cột quan trọng
         df.dropna(subset=required_columns, inplace=True)
 
-        # 3. Đảm bảo cột 'id' là duy nhất và là kiểu string
+        # Đảm bảo 'id' là duy nhất và kiểu string
         if df['id'].duplicated().any():
             logging.warning("Phát hiện các ID trùng lặp. Giữ lại bản ghi đầu tiên.")
             df.drop_duplicates(subset=['id'], keep='first', inplace=True)
         df['id'] = df['id'].astype(str)
 
-        # 4. Điền giá trị 'N/A' cho các cột metadata không bắt buộc nếu chúng bị thiếu
+        # Điền 'N/A' cho metadata không bắt buộc khi thiếu
         optional_metadata_cols = ['answer_html', 'source_url']
         for col in optional_metadata_cols:
             if col in df.columns:
@@ -103,7 +103,7 @@ def create_faq_embeddings(model: SentenceTransformer, texts: list[str]) -> list[
     try:
         logging.info(f"Bắt đầu tạo embedding cho {len(texts)} tiêu đề...")
         t1 = time.time()
-        # Sử dụng batch processing để tăng tốc độ
+        # Dùng batch processing để tạo embedding nhanh hơn
         embeddings = model.encode(texts, show_progress_bar=True)
         t2 = time.time()
         logging.info(f"Hoàn thành tạo embedding trong {t2 - t1:.2f} giây.")
@@ -125,19 +125,19 @@ def store_in_chromadb(
         full_db_path = os.path.join(db_path, db_folder)
         client = chromadb.PersistentClient(path=full_db_path)
 
-        # Sử dụng get_or_create để tránh lỗi nếu collection đã tồn tại
+        # Dùng get_or_create để reuse collection nếu đã có
         collection = client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"} 
         )
         logging.info(f"Sử dụng/Tạo collection '{collection_name}' tại '{full_db_path}'")
 
-        # Chuẩn bị dữ liệu cho ChromaDB
+        # Chuẩn bị ids, documents, metadata cho ChromaDB
         ids = faq_df["id"].tolist()
         documents = faq_df["title"].tolist() 
         metadatas = faq_df.to_dict(orient='records') 
 
-        # Sử dụng upsert để thêm mới hoặc cập nhật nếu ID đã tồn tại
+        # Upsert để thay thế hoặc thêm theo id
         collection.upsert(
             ids=ids,
             embeddings=embeddings,
@@ -153,10 +153,10 @@ def store_in_chromadb(
 
 
 if __name__ == "__main__":
-    # Khởi tạo logger
+    # Khởi tạo logger trước khi bắt đầu xử lý
     logger = setup_logger()
 
-    # Sửa lại đường dẫn mặc định cho file config để phù hợp với cấu trúc thư mục của bạn
+    # Đảm bảo đường dẫn config tương ứng với môi trường
     try:
         CONFIG_PATH = "D:/Chatbot_Data4Life/v1/create_vecto_db/config.json"
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -165,14 +165,14 @@ if __name__ == "__main__":
         logger.error(f"Không tìm thấy file config.json. Vui lòng tạo file này.")
         exit()
 
-    # Lấy các giá trị từ config
+    # Đọc tham số từ config
     FAQ_CSV_PATH = config["faq_csv_path"]
     DB_PATH = config["db_path"]
     DB_FOLDER = config["db_folder"]
     COLLECTION_NAME = config["collection_name"]
     LOCAL_MODEL_PATH = config["local_model_path"]
 
-    # 1. Tải dữ liệu từ CSV
+    # Tải dữ liệu FAQ từ file CSV
     faq_dataframe = load_and_prepare_faq_data(FAQ_CSV_PATH)
 
     if faq_dataframe.empty:
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     else:
         model = load_embedding_model(LOCAL_MODEL_PATH)
 
-        # 2. Tạo embeddings từ cột 'title'
+        # Tạo embedding cho mỗi tiêu đề FAQ
         titles_to_embed = faq_dataframe['title'].tolist()
         faq_embeddings = create_faq_embeddings(model, titles_to_embed)
 

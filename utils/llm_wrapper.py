@@ -74,13 +74,13 @@ class GeminiAnalyzerLLM:
             "TRẢ LẠI CHỈ JSON, KHÔNG THÊM BẤT KỲ VĂN BẢN NÀO KHÁC."
         )
         
-        # Gọi Gemini (implementation may vary — dùng generate_content như ví dụ trước)
+        # Gọi Gemini theo phương thức đang sử dụng (generate_content)
         response = self.model.generate_content(prompt)
 
-        # Lấy text an toàn
+        # Lấy text trả về, fallback sang str nếu cần
         raw_text = getattr(response, "text", None)
         if raw_text is None:
-            # try other representations
+            # Thử lấy phần tử khác nếu text không có
             raw_text = str(response)
 
         return raw_text.strip()
